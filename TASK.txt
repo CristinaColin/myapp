@@ -1,0 +1,59 @@
+Post
+Recibir por post un archivo csv con mullter y escribirlo en text:
+Identificar que si la request viene por body o por parametros
+PUT - idenpotente
+¿Qué es middleware en node?
+Mullter para hacer un multipart ???
+12/02/2025
+Imprimir el archio csv en un text (texto plano)
+Primero de forma síncrona y luego de forma asíncrona
+
+
+
+#######################################
+
+* MIDDLEWARE
+is a software tool that acts as a bridge between different
+systems or applications, allowing them to connect and share data
+Normalmente decimos que una rutina de código tiene como propósito
+recibir información y retornarla transformada, la única característica especial de un Middleware es que la información la obtiene de otra función de código para luego enviársela a una función distinta más.
+
+const express = require('express');
+const app = express();
+
+function miMiddleware(req,res,next){
+   next();
+}
+
+app.get('/',miMiddleware,function(req,res){
+   /* Se ejecutará esta función luego del middleware */
+});
+
+Se usa para modificar la petición o la respuesta antes de que lleguen al manejador final.
+
+
+#######################################
+* MULTER:
+Es una librería de middleware.
+Permite recibir y procesar archivos adjuntos enviados desde un form html.
+¿Manejador de archivos?
+Hay que configurar el storage.
+
+upload.single - subir 1 archivo a nuestro servidor
+upload.array - subir más de 1 archivos
+
+#######################################
+
+* EJS
+Motor de plantillas
+
+
+#######################################
+
+* Los MIME Types (Multipurpose Internet Mail Extensions)
+
+Son la manera estándar de mandar contenido a través de la red. Los tipos MIME especifican
+tipos de datos, como por ejemplo texto, imagen, audio, etc. que los archivos contienen.
+
+#####################################
+https://nestjs.com/
