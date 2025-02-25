@@ -15,8 +15,11 @@ Primero de forma síncrona y luego de forma asíncrona
 * MIDDLEWARE
 is a software tool that acts as a bridge between different
 systems or applications, allowing them to connect and share data
+
 Normalmente decimos que una rutina de código tiene como propósito
-recibir información y retornarla transformada, la única característica especial de un Middleware es que la información la obtiene de otra función de código para luego enviársela a una función distinta más.
+recibir información y retornarla transformada, la única característica
+especial de un Middleware es que la información la obtiene de otra
+función de código para luego enviársela a una función distinta más.
 
 const express = require('express');
 const app = express();

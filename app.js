@@ -8,6 +8,7 @@ var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 var horasRouter = require('./routes/horas');
 var filesRouter = require('./routes/files');
+var streamsRouter = require('./routes/streams');
 
 var app = express();
 
