@@ -41,72 +41,65 @@ const handler = (req, res, next) => {
   });
 }
 
-router.post('/upload', handler, (req, res) => {
-  res.json({ message: 'Upload success', file: req.file.filename });
-});
-router.get('/form', (req, res) => {
-  res.render('form', { title: 'Formulario subir archivo' });
-});
-router.get('/view/:filename',
-  async (req, res) => {
-    // console.log(req);
-    const filename = req.params.filename;
-    // const filePath = path.join(__dirname, '../storage', filename);
-    // const filePath = path.join('../storage', filename);
-    const filePath = path.join(storePath, filename);
-    console.log('view: '+filePath);
 
-    try {
-      const data = await readFile(filePath, 'utf-8');  // devuelve una promesa
-      // const regexp = /"\[?[^\]]*\]?"|".+"/g;
-      // const regexp1 =/"\[[^\]]*\]"/g;
-      // const regexp =/"\[.+\]"/g;
-      const regexp =/"[^"]+"/g;
 
-      const modifiedData = data.replace(regexp, (match) => {
-        return match.replaceAll(',', ';');
-      });
-
-      const rows = modifiedData.trim().split('\n'); // Y cuando es con /n ??
-      const headers = rows[0].split(',') //
-      // console.log(headers);
-      
-      /*********************/
-      // let matches = [...data.matchAll(regexp)].map(match => {
-      //   return match[0].replaceAll(',', ';');
-      // });
-      // console.log(matches);
-
-      // console.log(modifiedData);
-      
-      /*********************/
-      let keys = headers;
-      keys[0] = 'id';
-
+const procesar = function(file){
+  const regexp =/"[^"]+"/g;
+  const modifiedData = file.replace(regexp, (match) => {
+    return match.replaceAll(',', ';');
+  });
+  const rows=modifiedData.split('\n')
+  let headers =rows[0].split(',')
+  headers[0] = 'id';
       const dataJson = rows.slice(1).map(row => { // mapeo cada renglón
         const val = row.split(','); 
-
         let json = {}
-        keys.forEach((header, index) => {
+        headers.forEach((header, index) => {
           json[header.replaceAll(' ', '_')] = val[index]?.trim();
         });
         return json;
       });
+  return (dataJson);
+}
+function get(rows, key){
+  const extract = rows.map(row=>{
+    return row[key];
+  });
+  return extract;
+}
+function get2(rows, key){
+  const extract = rows.map(row=>{
+    // let data={};
+    // keys.ma
+    // return row.title;
+  });
+  return extract;
+}
 
-      console.log(dataJson);
-      
-      // // res.type('text/plain');
-      // console.log(dataJson.length);
-      // res.send(JSON.stringify(dataJson));
+
+router.post('/upload', handler, (req, res) => {
+  res.json({ message: 'Upload success', file: req.file.filename });
+});
+
+router.get('/form', (req, res) => {
+  res.render('form', { title: 'Formulario subir archivo' });
+});
+
+router.get('/view/:filename', async (req, res) => {
+    const filename = req.params.filename;
+    const filePath = path.join(__dirname,'../','storage/', filename);
+    console.log('filepath: '+filePath);
+
+    try {
+      const data = await readFile(filePath, 'utf-8');  // devuelve una promesa
+      res.send(get(procesar(data), 'title'));
     } catch (err) {
-      res.status(404).json({ error: 'Ha ocurrido un error al leer el archivo' });
-      console.log(new Error('Ha ocurrido un error al leer el archivo'));
-
+      res.status(404).json({ error: 'Ha ocurrido un error al leer el archivo: ' + err });
+      console.log(new Error('Ha ocurrido un error al leer el archivo' + err));
     }
-  }
-);
+});
 
-router.get('/csv/:filename', (req, res) => { // No está funcionando bien!!!!
+router.get('/csv/:filename', (req, res) => {
   // const filePath = path.join(__dirname, 'storage', req.params.filename);
   const filePath = path.join(storePath, req.params.filename);
   // console.log('csv: '+filePath);

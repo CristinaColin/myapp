@@ -40,7 +40,8 @@ const timeZones = {
     'dublin': 'Europe/Dublin',
     'johannesburgo': 'Africa/Johannesburg',
     'el_cairo': 'Africa/Cairo',
-    'nairobi': 'Africa/Nairobi'
+    'nairobi': 'Africa/Nairobi',
+    'georgia': 'Atlantic/South_Georgia'
 };
 
 router.get('/', (req, res) => {

@@ -1,4 +1,4 @@
-# Usa la última versión de Node.js como imagen base
+# Usa la última versión de Node.js como imagen base - fue v23.8.0 - 27/02/2025
 FROM node:latest
 # Establece el directorio de trabajo dentro del contenedor
 WORKDIR /usr/src/app
@@ -11,4 +11,4 @@ COPY . .
 # Expone el puerto en el que la aplicación se ejecutará
 EXPOSE 3000
 # Comando para ejecutar la aplicación
-CMD ["node", "start"]
+CMD ["npm", "start"]
