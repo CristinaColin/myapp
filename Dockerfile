@@ -1,7 +1,7 @@
 # Usa la última versión de Node.js como imagen base - fue v23.8.0 - 27/02/2025
 FROM node:latest
 # Establece el directorio de trabajo dentro del contenedor
-WORKDIR /usr/src/app
+WORKDIR /app
 # Copia solo package.json y package-lock.json para aprovechar el caché de Docker
 COPY package*.json ./
 # Instala las dependencias dentro del contenedor

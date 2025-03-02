@@ -26,6 +26,7 @@ app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/horas', horasRouter);
 app.use('/files', filesRouter);
+app.use('/streams', streamsRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

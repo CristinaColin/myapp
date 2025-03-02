@@ -1,14 +1,12 @@
-// const { pipeline } = require('node:stream/promises');
-// const fs = require('node:fs');
-// const zlib = require('node:zlib');
+const { Readable } = require('stream');
+const express = require('express');
+const router = express.Router();
 
-// async function run() {
-//   await pipeline(
-//     fs.createReadStream('archive.tar'),
-//     zlib.createGzip(),
-//     fs.createWriteStream('archive.tar.gz'),
-//   );
-//   console.log('Pipeline succeeded.');
-// }
+router.get('/stream', (req, res) => {
+  const readableStream = Readable.from(['Hola\n', 'Mundo\n']);
 
-// run().catch(console.error);
+  res.setHeader('Content-Type', 'text/plain');
+  readableStream.pipe(res); // Enviar datos al cliente usando pipe
+});
+
+module.exports = router;
