@@ -2,8 +2,9 @@
 services:
   app:
     build: .
+    container_name: node_app
     ports:
       - "3000:3000"
     volumes:
       - .:/app
-    # command: ["node", "app.js"]
+    # command: ["node", "app.js"]*
