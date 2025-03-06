@@ -6,8 +6,10 @@ const { readdir, stat } = require('fs/promises');
 const { pipeline } = require('stream/promises');
 const unzipper = require('unzipper');
 const zlib = require('node:zlib');
+// var targz = require('tar.gz');
 const path = require('path');
 const fs = require('fs');
+
 
 const ZIP_FOLDER = path.join(__dirname, '../storage'); // Carpeta donde están los ZIPs
 const EXTRACT_FOLDER = path.join(__dirname, '../storage'); // Carpeta donde se extraen
@@ -41,36 +43,278 @@ const calculateFolderSize = async (folderPath) => {
   }
 };
 
+
+router.get('/unzip3/:filename', async (req, res) => {
+  const zipFilePath = path.join(ZIP_FOLDER, req.params.filename);
+  const outputFolder = path.join(EXTRACT_FOLDER, path.basename(req.params.filename, '.zip'));
+
+  console.log('📁 Carpeta de salida:', outputFolder);
+
+  if (!fs.existsSync(zipFilePath)) {
+    return res.status(404).json({ error: '❌ Archivo ZIP no encontrado' });
+  }
+
+  if (!fs.existsSync(outputFolder)) {
+    fs.mkdirSync(outputFolder, { recursive: true });
+  }
+
+  try {
+    const writeStream = fs.createWriteStream('datos.json');
+    writeStream.write('[\n'); // JSON válido como array
+
+    const stream = fs.createReadStream(zipFilePath);
+    const zipfile = stream.pipe(unzipper.Parse());
+    let firstEntry = true;
+
+    zipfile.on('entry', (entry) => {
+      if (!entry.path.includes('__MACOSX/')) {
+        console.log(`⛙ Archivo encontrado: ${entry.path}`);
+
+        if (entry.path.endsWith('.gz')) {
+          const gunzipStream = entry.pipe(zlib.createGunzip()); // Descomprimir .gz
+          let jsonData = '';
+
+          gunzipStream.on('data', (chunk) => {
+            jsonData += chunk.toString(); // Acumular los datos en string
+          });
+
+          gunzipStream.on('end', () => {
+            try {
+              const parsedData = JSON.parse(jsonData); // Intentar parsear el JSON
+              if (!firstEntry) writeStream.write(',\n'); // Agregar coma entre objetos
+              writeStream.write(JSON.stringify(parsedData, null, 2)); // Escribir JSON formateado
+              firstEntry = false;
+            } catch (err) {
+              console.error('❌ Error al parsear JSON:', err);
+            }
+          });
+
+          gunzipStream.on('error', (error) => {
+            console.error('❌ Error al descomprimir:', error);
+          });
+
+        } else {
+          entry.autodrain();
+        }
+      } else {
+        entry.autodrain();
+      }
+    });
+
+    zipfile.on('end', () => {
+      writeStream.write('\n]\n'); // Cerrar el array JSON
+      writeStream.end();
+      console.log('📁 Archivo JSON generado correctamente');
+    });
+
+    zipfile.on('error', (err) => {
+      console.error('❌ Error en el ZIP:', err);
+    });
+
+    res.status(200).json({ message: 'Proceso de descompresión iniciado' });
+
+  } catch (error) {
+    console.error("❌ Hubo un error:", error);
+    res.status(500).json({ error: 'Error inesperado' });
+  }
+});
+
+// Ruta para descomprimir ZIP y manejar .gz dentro
+router.get('/unzip2/:filename', async (req, res) => {
+  const zipFilePath = path.join(ZIP_FOLDER, req.params.filename);
+  const outputFolder = path.join(EXTRACT_FOLDER, path.basename(req.params.filename, '.zip'));
+
+  console.log('📁 Carpeta de salida:', outputFolder);
+
+  // Verificar si el archivo ZIP existe
+  if (!fs.existsSync(zipFilePath)) {
+    return res.status(404).json({ error: '❌ Archivo ZIP no encontrado' });
+  }
+
+  // Crear la carpeta de salida si no existe
+  if (!fs.existsSync(outputFolder)) {
+    fs.mkdirSync(outputFolder, { recursive: true });
+  }
+
+  try {
+
+    const writeStream = fs.createWriteStream('datos.json');
+    writeStream.write('{\n');
+    console.log(`writeStream.bytesWritten: ${writeStream.bytesWritten}`);
+    console.log(`writeStream path: ${writeStream.path}`);
+
+    const stream = fs.createReadStream(zipFilePath);
+    const zipfile = stream.pipe(unzipper.Parse());
+    let data = {};
+    zipfile.on('entry', (entry) => {
+      if (!entry.path.includes('__MACOSX/')) {
+        // entry.autodrain();
+        writeStream.write(entry.path + ',\n');
+        console.log(`⛙ Entry path: ${entry.path}\nTipo: ${entry.type}`);
+
+        if (entry.path.includes('.gz')) {
+          entry.on('data', chunk => {
+            // data += chunk.toString();
+            try {
+              console.log('🧩 🧩 Chunk: ' + JSON.stringify(chunk));
+              // const jsonData = JSON.parse(chunk);
+              // writeStream.write(JSON.stringify(jsonData) + ',\n');
+            writeStream.write(JSON.stringify(jsonData) + ',\n');
+            } catch (e) {
+              console.error('❌  ❌  Error al parsear el JSON:');
+            }
+          });
+        }
+        entry.on('end', () => {
+          console.log('📊 Datos del archivo recibido:');
+          console.log(data);
+          try {
+            const jsonData = JSON.parse(data); // Intentamos parsearlo como JSON
+            writeStream.write(JSON.stringify(jsonData) + ',\n');
+          } catch (err) {
+            console.error('❌ Error al parsear JSON, guardando como texto:', err);
+            writeStream.write(JSON.stringify({ rawData: data }) + ',\n');
+          }
+        });
+        entry.on('error', (error) => {
+          console.log('❌ Ha ocurrido un error en el entry: ' + error);
+        });
+
+      } else {
+        entry.autodrain();
+      }
+
+    });
+    zipfile.on('end', () => {
+      console.log(`Total de archivos/carpetas en el ZIP: ${fileCount}`);
+    });
+    zipfile.on('close', () => {
+      console.log(`Total de archivos/carpetas en el ZIP: ${fileCount}`);
+    });
+    zipfile.on('error', (err) => {
+      console.error('Error en el archivo ZIP:', err);
+    });
+
+    // console.log('Total de archivos/carpetas' + fileCount);
+    writeStream.end('... Elementos ... \n}');
+    writeStream.on('finish', () => {
+      const contenido = fs.readFileSync(writeStream.path, 'utf8');
+      console.log('Contenido del archivo:', contenido);
+      return contenido;
+    });
+    writeStream.on('error', (error) => {
+      console.error('Error al escribir en writeStream: ' + error);
+    });
+
+    res.status(200)
+      .json({
+        message: 'terminando on entry',
+      });
+
+    // fs.createReadStream(zipFilePath)
+    //   .pipe(unzipper.Parse()) // Leer ZIP en streaming
+    //   .on('entry', (entry) => {
+    //     if (!entry.path.startsWith('__MACOSX')) {
+    //       console.log(`📄 Archivo encontrado: ${entry.path}`);
+    //       const filePath = path.join(outputFolder, entry.path);
+
+    //       if (entry.path.endsWith('.gz')) {
+    //         console.log(`📂 Verificado .gz: ${entry.path}`);
+
+    //         const jsonPath = filePath.replace('.gz', '.json');
+    //         entry.pipe(
+    //           fs.createWriteStream(jsonPath)
+    //         );
+
+    //       } else {
+    //         entry.autodrain(); // ignorar archivo
+    //       }
+    //     } else {
+    //       entry.autodrain();
+    //     }
+
+    //   })
+    //   .on('close', () => {
+    //     console.log('ZIP procesado completamente.');
+    //     res.json({ message: `ZIP descomprimido en: ${outputFolder}` });
+    //   })
+    //     console.error('Error en el procesamiento del ZIP:', err);
+    //     res.status(500).json({ error: 'Error al procesar el ZIP' });
+    //   });
+
+  } catch (error) {
+    console.error("Hubo un error:", error);
+    res.status(500).json({ error: 'Error inesperado' });
+  }
+});
+
+// Ruta para descomprimir ZIP y manejar .gz dentro usando tar.gz
+
 // Ruta para descomprimir y calcular tamaño
 router.get('/unzip/:filename', async (req, res) => {
   const zipFilePath = path.join(ZIP_FOLDER, req.params.filename);
   const outputFolder = path.join(EXTRACT_FOLDER, path.basename(req.params.filename, '.zip'));
 
-  console.log('outputFolder:' + outputFolder);
+  console.log('📁 Carpeta de salida:', outputFolder);
 
   // Verificar si el archivo ZIP existe
-  if (!existsSync(zipFilePath)) {
-    return res.status(404).json({ error: 'Archivo no encontrado' });
+  if (!fs.existsSync(zipFilePath)) {
+    return res.status(404).json({ error: '❌ Archivo ZIP no encontrado' });
   }
+
+  // Crear la carpeta de salida si no existe
+  if (!fs.existsSync(outputFolder)) {
+    fs.mkdirSync(outputFolder, { recursive: true });
+  }
+
   try {
-    // await unzip(zipFilePath, outputFolder);
 
-    // Calcular tamaño después de la extracción
-    const folderSize = await calculateFolderSize(outputFolder);
-    console.log(folderSize);
-    const folderSizeMB = (folderSize / (1024 * 1024)).toFixed(2); // Convertir a MB
-
-    res.json({
-      message: `Archivo ${req.params.filename} descomprimido con éxito`,
-      size: `${folderSizeMB} MB`
+    const writeStream = fs.createWriteStream('datos.json');
+    writeStream.write('[\n');
+    console.log(`writeStream.bytesWritten: ${writeStream.bytesWritten}`);
+    console.log(`writeStream path: ${writeStream.path}`);
+    writeStream.end('contenido del writeStream\n]');
+    writeStream.on('finish', () => {
+      const contenido = fs.readFileSync(writeStream.path, 'utf8');
+      console.log('Contenido del archivo:', contenido);
     });
+
+    const chunkSize = 1 * 1024; // 1 KB (1 * 1024 bytes)
+    const maxChunks = 5; // Número de chunks a imprimir
+    let chunkCount = 0;
+    const stream = fs.createReadStream(zipFilePath, { highWaterMark: chunkSize });
+
+    stream.on('data', (chunk) => {
+      chunkCount++;
+      console.log(`🧩 🧩 Chunk ${chunkCount}: ${chunk.toString()}`);
+
+      if (chunkCount >= maxChunks) {
+        // stream.destroy(); // Detener la lectura después de imprimir los chunks deseados
+        // console.log('Lectura detenida.');
+        console.log('Deteniendo lectura..');
+        // Detener la lectura después de imprimir los chunks deseados
+        // Las dos opciones funcionan
+        // stream.destroy(); 
+        stream.close();
+      }
+    })
+      .on('end', function () {
+        console.log(`Lectura completa. Se leyeron ${chunkCount} chunks.`);
+      })
+      .on('error', function (err) {
+        console.error('Error en la lectura del archivo:', err);
+      })
+      .on('close', () => {
+        console.log('Evento CLOSE: El stream fue cerrado.');
+      });
   } catch (error) {
-    res.status(500).json({ error: 'Error al descomprimir el archivo', details: error.message });
+    console.error("Hubo un error:", error);
+    res.status(500).json({ error: 'Error inesperado' });
   }
 });
 
 router.get('/holaMundo', (req, res) => {
-  const readableStream = Readable.from(['Hola\n', 'Mundo\n']);
+  const readableStream = createReadStream.from(['Hola\n', 'Mundo\n']);
 
   res.setHeader('Content-Type', 'text/plain');
   readableStream.pipe(res); // Enviar datos al cliente usando pipe

@@ -67,9 +67,7 @@ function get(rows, key){
 }
 function get2(rows, key){
   const extract = rows.map(row=>{
-    // let data={};
-    // keys.ma
-    // return row.title;
+    
   });
   return extract;
 }
