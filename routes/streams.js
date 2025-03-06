@@ -9,6 +9,7 @@ const zlib = require('node:zlib');
 // var targz = require('tar.gz');
 const path = require('path');
 const fs = require('fs');
+const { error } = require('node:console');
 
 
 const ZIP_FOLDER = path.join(__dirname, '../storage'); // Carpeta donde están los ZIPs
@@ -65,12 +66,16 @@ router.get('/unzip3/:filename', async (req, res) => {
     const stream = fs.createReadStream(zipFilePath);
     const zipfile = stream.pipe(unzipper.Parse());
     let firstEntry = true;
+    let countEntry = 0;
 
     zipfile.on('entry', (entry) => {
       if (!entry.path.includes('__MACOSX/')) {
+        countEntry++;
+
         console.log(`⛙ Archivo encontrado: ${entry.path}`);
 
         if (entry.path.endsWith('.gz')) {
+
           const gunzipStream = entry.pipe(zlib.createGunzip()); // Descomprimir .gz
           let jsonData = '';
 
@@ -110,6 +115,9 @@ router.get('/unzip3/:filename', async (req, res) => {
     zipfile.on('error', (err) => {
       console.error('❌ Error en el ZIP:', err);
     });
+    zipfile.on('close', (err) => {
+      console.error('🚫 Las entradas ZIP se han cerrado');
+    });
 
     res.status(200).json({ message: 'Proceso de descompresión iniciado' });
 
@@ -145,25 +153,53 @@ router.get('/unzip2/:filename', async (req, res) => {
 
     const stream = fs.createReadStream(zipFilePath);
     const zipfile = stream.pipe(unzipper.Parse());
+    let countEntry = 0;
     let data = {};
-    zipfile.on('entry', (entry) => {
+    zipfile.on('entry', async (entry) => {
       if (!entry.path.includes('__MACOSX/')) {
         // entry.autodrain();
         writeStream.write(entry.path + ',\n');
         console.log(`⛙ Entry path: ${entry.path}\nTipo: ${entry.type}`);
 
+
         if (entry.path.includes('.gz')) {
-          entry.on('data', chunk => {
-            // data += chunk.toString();
-            try {
-              console.log('🧩 🧩 Chunk: ' + JSON.stringify(chunk));
-              // const jsonData = JSON.parse(chunk);
-              // writeStream.write(JSON.stringify(jsonData) + ',\n');
-            writeStream.write(JSON.stringify(jsonData) + ',\n');
-            } catch (e) {
-              console.error('❌  ❌  Error al parsear el JSON:');
-            }
-          });
+          countEntry++;
+
+          const firstBytes = await entry.buffer();
+          console.log(firstBytes.slice(0, 2).toString());
+          
+          const magicNumber = firstBytes.slice(0, 2).toString('hex').toUpperCase();
+
+          if (magicNumber === '1F8B') {
+            console.log(`✅ ${entry.path} está comprimido en Gzip.`);
+            
+          } else {
+            console.log(`❌ ${entry.path} NO es un archivo Gzip válido.`);
+            // console.log(`📄 Contenido inicial (${entry.path}):`);
+            // console.log(firstBytes.toString());
+          }
+
+
+          // const gzfile = fs.createReadStream(entry.path, { highWaterMark: 1024 });
+          // // const gzfile = stream.pipe(gzstream.Parse());
+          // gzfile.on('data', (chunk) => {
+          //   console.log('🧩 🧩 Chunk en gzfile: ' + JSON.stringify(chunk));
+          // });
+          // gzfile.on('error', (error) => {
+          //   console.error('Ha ocurrido un error gzfile' + error);
+          // });
+
+          // entry.on('data', chunk => {
+          //   // data += chunk.toString();
+          //   try {
+          //     console.log('🧩 🧩 Chunk: ' + JSON.stringify(chunk));
+          //     // const jsonData = JSON.parse(chunk);
+          //     // writeStream.write(JSON.stringify(jsonData) + ',\n');
+          //     writeStream.write(JSON.stringify(jsonData) + ',\n');
+          //   } catch (e) {
+          //     console.error('❌  ❌  Error al parsear el JSON:');
+          //   }
+          // });
         }
         entry.on('end', () => {
           console.log('📊 Datos del archivo recibido:');
@@ -186,10 +222,11 @@ router.get('/unzip2/:filename', async (req, res) => {
 
     });
     zipfile.on('end', () => {
-      console.log(`Total de archivos/carpetas en el ZIP: ${fileCount}`);
+      console.log(`Se detona el evento END del ZIP: ${countEntry}`);
     });
     zipfile.on('close', () => {
-      console.log(`Total de archivos/carpetas en el ZIP: ${fileCount}`);
+      console.log(`Total de archivos/carpetas en el ZIP: ${countEntry}`);
+      console.log('🚫 Las entradas ZIP se han cerrado');
     });
     zipfile.on('error', (err) => {
       console.error('Error en el archivo ZIP:', err);
