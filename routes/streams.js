@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
 
+const { spawn, fork, exec, execFile } = require('child_process');
 const { createReadStream, existsSync } = require('fs');
 const { readdir, stat } = require('fs/promises');
 const { pipeline } = require('stream/promises');
+const EventEmitter = require('events');
 const unzipper = require('unzipper');
 const zlib = require('node:zlib');
 // var targz = require('tar.gz');
@@ -167,12 +169,12 @@ router.get('/unzip2/:filename', async (req, res) => {
 
           const firstBytes = await entry.buffer();
           console.log(firstBytes.slice(0, 2).toString());
-          
+
           const magicNumber = firstBytes.slice(0, 2).toString('hex').toUpperCase();
 
           if (magicNumber === '1F8B') {
             console.log(`✅ ${entry.path} está comprimido en Gzip.`);
-            
+
           } else {
             console.log(`❌ ${entry.path} NO es un archivo Gzip válido.`);
             // console.log(`📄 Contenido inicial (${entry.path}):`);
@@ -348,6 +350,94 @@ router.get('/unzip/:filename', async (req, res) => {
     console.error("Hubo un error:", error);
     res.status(500).json({ error: 'Error inesperado' });
   }
+});
+
+router.get('/spwan', async (req, res) => {
+  // Handling large outputs
+  const child = spawn('ls', ['-lh', '/usr']);
+
+  child.stdout.on('data', (data) => {
+    console.log(`stdout: ${data}`);
+  });
+
+  child.stderr.on('data', (data) => {
+    console.error(`stderr: ${data}`);
+  });
+
+  child.on('close', (code) => {
+    console.log(`child process exited with code ${code}`);
+  });
+
+});
+
+router.get('/fork', async (req, res) => {
+  // Running child NodeJS processes
+  const child = fork(path.join(__dirname, 'child.js'));
+
+  child.on('message', (message) => {
+    console.log(`Message from child: ${message}`);
+  });
+
+  child.send('Hello from parent');
+});
+
+router.get('/exec', async (req, res) => {
+  // Small shell commands
+  // Counts the number of directory in current working directory
+  exec('dir | find /c /v ""', (error, stdout, stderr) => {
+    if (error) {
+      console.error(`exec error: ${error}`);
+      return;
+    }
+    console.log(`stdout: No. of directories = ${stdout}`);
+    if (stderr != "")
+      console.error(`stderr: ${stderr}`);
+  });
+});
+
+router.get('/execfile', async (req, res) => {
+  // Running binary files
+  execFile('node', ['--version'], (error, stdout, stderr) => {
+    if (error) {
+      console.error(`execFile error: ${error}`);
+      return;
+    }
+    console.log(`stdout: ${stdout}`);
+    if (stderr) {
+      console.error(`stderr: ${stderr}`);
+    }
+  });
+});
+
+router.get('/event', async (req, res) => {
+  // Initializing event emitter instances 
+  let eventEmitter = new EventEmitter();
+
+  let geek1 = (msg) => {
+    console.log("Message from geek1: " + msg);
+  };
+
+  let geek2 = (msg) => {
+    console.log("Message from geek2: " + msg);
+  };
+
+  // Registering geek1 and geek2
+  eventEmitter.on('myEvent', geek1);
+  eventEmitter.on('myEvent', geek1);
+  eventEmitter.on('myEvent', geek2);
+
+  // Removing listener geek1 that was
+  // registered on the line 13
+  eventEmitter.removeListener('myEvent', geek1);
+
+  // Triggering myEvent
+  eventEmitter.emit('myEvent', "Event occurred");
+
+  // Removing all the listeners to myEvent
+  eventEmitter.removeAllListeners('myEvent');
+
+  // Triggering myEvent
+  eventEmitter.emit('myEvent', "Event occurred");
 });
 
 router.get('/holaMundo', (req, res) => {
