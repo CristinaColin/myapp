@@ -2,7 +2,7 @@ name: 'Deploy CodigoFacilito'
 
 on:
   push:
-    branches: ['main']
+    branches: ['dev']
 
 jobs:
   deploy-codigofacilito:
